@@ -24,6 +24,16 @@ public class BaseController {
         }
     }
 
+    public static void esperarSegundos(int segundos) {
+        try {
+            Thread.sleep(segundos * 1000L);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("La espera fue interrumpida", e);
+        }
+    }
+
+
     public boolean visualizarElemento(WebElement elementoWeb, int tiempoEspera) {
         try {
             WebDriverWait wait2 = new WebDriverWait(DriverContext.getDriver(), Duration.ofSeconds(tiempoEspera));

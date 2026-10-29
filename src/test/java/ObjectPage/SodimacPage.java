@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+
 public class SodimacPage extends BaseController {
 
     // ELEMENTOS PRINCIPALES
@@ -22,14 +23,19 @@ public class SodimacPage extends BaseController {
     @FindBy(xpath = "//a//h4")
     private List<WebElement> categoriasNavidad;
 
-    @FindBy(xpath = "//div[@data-testid='ssr-pod']")
-    private List<WebElement> tarjetasProductos;
+    private final By productosLocator =
+            By.xpath("//*[@data-pod]");
+
+    private List<WebElement> obtenerProductos() {
+        return driver.findElements(productosLocator);
+    }
 
     private static final String XPATH_NOMBRE =
             ".//*[contains(@class,'pod-subTitle')]";
 
     private static final String XPATH_PRECIO =
-            ".//li[@data-cmr-price]";
+            ".//span[contains(text(),'$')]";
+
 
     private static final String XPATH_IMAGEN =
             ".//img";
@@ -37,16 +43,27 @@ public class SodimacPage extends BaseController {
     private static final String XPATH_PRECIO_VISIBLE =
             ".//span[contains(text(),'$')]";
 
+    private static final int MINIMO_PRODUCTOS = 20;
+
     // VALIDACIONES GENERALES
 
     public void esperarCargaPagina() {
 
         visualizarElemento(encabezadoPrincipal, 15);
 
+        List<WebElement> productos = obtenerProductos();
+
+        if (productos.isEmpty()) {
+            throw new RuntimeException(
+                    "No se encontraron productos en la página");
+        }
+
         visualizarElemento(
-                tarjetasProductos.get(0),
+                productos.get(0),
                 15
         );
+
+        cargarTodosLosProductos();
     }
 
     public boolean visualizarEncabezadoPrincipal() {
@@ -60,11 +77,11 @@ public class SodimacPage extends BaseController {
     }
 
     public boolean visualizarContenedorProductos() {
-        return !tarjetasProductos.isEmpty();
+        return !obtenerProductos().isEmpty();
     }
 
     public int obtenerCantidadProductos() {
-        return tarjetasProductos.size();
+        return obtenerProductos().size();
     }
 
     // VALIDAR ELEMENTOS TARJETA
@@ -79,17 +96,24 @@ public class SodimacPage extends BaseController {
                 producto.findElements(
                         By.xpath(XPATH_PRECIO));
 
+        List<WebElement> imagenes =
+                producto.findElements(
+                        By.xpath(XPATH_IMAGEN));
+
         return !nombres.isEmpty()
-                && !precios.isEmpty();
+                && !precios.isEmpty()
+                && !imagenes.isEmpty();
     }
 
     public boolean validarTarjetasCompletas() {
 
         System.out.println(
                 "Cantidad productos: "
-                        + tarjetasProductos.size());
+                        + obtenerProductos().size());
 
-        for (WebElement producto : tarjetasProductos) {
+        int productosValidos = 0;
+
+        for (WebElement producto : obtenerProductos()) {
 
             try {
 
@@ -101,24 +125,13 @@ public class SodimacPage extends BaseController {
                     continue;
                 }
 
+                productosValidos++;
+
                 String nombre =
                         producto.findElement(
                                         By.xpath(XPATH_NOMBRE))
                                 .getText()
                                 .trim();
-
-
-                List<WebElement> imagenes =
-                        producto.findElements(
-                                By.xpath(XPATH_IMAGEN));
-
-                if (imagenes.isEmpty()) {
-
-                    System.out.println(
-                            "Elemento omitido (sin imagen)");
-
-                    continue;
-                }
 
                 if (nombre.isEmpty()) {
 
@@ -133,6 +146,124 @@ public class SodimacPage extends BaseController {
                 System.out.println(
                         "Error producto: "
                                 + e.getMessage());
+
+                return false;
+            }
+        }
+
+        System.out.println(
+                "Productos válidos: "
+                        + productosValidos);
+
+        if (productosValidos == 0) {
+
+            System.out.println(
+                    "No existen productos válidos");
+
+            return false;
+        }
+
+        return true;
+    }
+
+    public void cargarTodosLosProductos() {
+
+        JavascriptExecutor js =
+                (JavascriptExecutor) driver;
+
+        long alturaAnterior = 0;
+        int intentosSinCambios = 0;
+        int maxIntentosSinCambios = 5;
+
+        while (intentosSinCambios < maxIntentosSinCambios) {
+
+            int productosAntes =
+                    obtenerProductos().size();
+
+            // Baja de forma gradual
+            js.executeScript(
+                    "window.scrollBy(0, 800);");
+
+            try {
+                Thread.sleep(800);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+
+            int productosDespues =
+                    obtenerProductos().size();
+
+            Number altura =
+                    (Number) js.executeScript(
+                            "return document.body.scrollHeight");
+
+            long alturaActual = 0;
+
+            if (altura != null) {
+                alturaActual = altura.longValue();
+            }
+
+            System.out.println(
+                    "Productos detectados: "
+                            + productosDespues);
+
+            if (productosDespues == productosAntes
+                    && alturaActual == alturaAnterior) {
+
+                intentosSinCambios++;
+
+            } else {
+
+                intentosSinCambios = 0;
+            }
+
+            alturaAnterior = alturaActual;
+        }
+
+        System.out.println(
+                "Productos encontrados: "
+                        + obtenerProductos().size());
+
+        // Regresa arriba para que las capturas queden ordenadas
+        js.executeScript(
+                "window.scrollTo(0,0);");
+    }
+
+    public boolean validarCantidadMinimaProductos() {
+
+        int productosValidos = 0;
+
+        for (WebElement producto : obtenerProductos()) {
+
+            if (esProductoValido(producto)) {
+                productosValidos++;
+            }
+        }
+
+        System.out.println(
+                "Productos válidos encontrados: "
+                        + productosValidos);
+
+        return productosValidos >= MINIMO_PRODUCTOS;
+    }
+
+    public boolean validarLinksProductos() {
+
+        for (WebElement producto : obtenerProductos()) {
+
+            if (!esProductoValido(producto)) {
+                continue;
+            }
+
+            String href =
+                    producto.getDomAttribute("href");
+
+            if (href == null || href.trim().isEmpty()) {
+
+                System.out.println(
+                        "Producto sin enlace");
+
+                return false;
             }
         }
 
@@ -143,10 +274,7 @@ public class SodimacPage extends BaseController {
 
     public boolean validarImagenesCargadas() {
 
-        JavascriptExecutor js =
-                (JavascriptExecutor) driver;
-
-        for (WebElement producto : tarjetasProductos) {
+        for (WebElement producto : obtenerProductos()) {
 
             if (!esProductoValido(producto)) {
                 continue;
@@ -157,25 +285,17 @@ public class SodimacPage extends BaseController {
                             By.xpath(XPATH_IMAGEN));
 
             if (imagenes.isEmpty()) {
-
-                System.out.println(
-                        "Producto sin imagen detectado");
-
-                continue;
+                return false;
             }
 
-            WebElement imagen =
-                    imagenes.get(0);
+            String src =
+                    imagenes.get(0)
+                            .getAttribute("src");
 
-            Boolean cargada =
-                    (Boolean) js.executeScript(
-                            "return arguments[0].complete && arguments[0].naturalWidth > 0;",
-                            imagen);
-
-            if (!Boolean.TRUE.equals(cargada)) {
+            if (src == null || src.trim().isEmpty()) {
 
                 System.out.println(
-                        "Imagen no cargada correctamente");
+                        "Imagen sin src");
 
                 return false;
             }
@@ -188,7 +308,7 @@ public class SodimacPage extends BaseController {
 
     public boolean validarNombresNoVacios() {
 
-        for (WebElement producto : tarjetasProductos) {
+        for (WebElement producto : obtenerProductos()) {
 
             if (!esProductoValido(producto)) {
                 continue;
@@ -217,9 +337,9 @@ public class SodimacPage extends BaseController {
     public boolean validarFormatoMonedaCLP() {
 
         Pattern formatoCLP =
-                Pattern.compile("\\$\\s?\\d{1,3}(\\.\\d{3})*");
+                Pattern.compile("^\\$\\s?\\d{1,3}(\\.\\d{3})*$");
 
-        for (WebElement producto : tarjetasProductos) {
+        for (WebElement producto : obtenerProductos()) {
 
             if (!esProductoValido(producto)) {
                 continue;
@@ -238,8 +358,7 @@ public class SodimacPage extends BaseController {
                                 .replace("\n", "")
                                 .trim();
 
-                if (formatoCLP.matcher(texto).find()) {
-
+                if (formatoCLP.matcher(texto).matches()) {
                     precioValido = true;
                     break;
                 }
@@ -264,7 +383,7 @@ public class SodimacPage extends BaseController {
         Set<String> productosUnicos =
                 new HashSet<>();
 
-        for (WebElement producto : tarjetasProductos) {
+        for (WebElement producto : obtenerProductos()) {
 
             try {
 
@@ -297,8 +416,14 @@ public class SodimacPage extends BaseController {
                                 .getText()
                                 .trim();
 
+                String url =
+                        producto.getDomAttribute("href");
+
+                if (url == null) {
+                    url = "";
+                }
                 String llave =
-                        nombre + "|" + precio;
+                        nombre + "|" + precio + "|" + url;
 
                 if (!productosUnicos.add(llave)) {
 
@@ -314,6 +439,33 @@ public class SodimacPage extends BaseController {
                 System.out.println(
                         "Error validando duplicados: "
                                 + e.getMessage());
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    // validar productos con precio
+
+    public boolean validarProductosConPrecio() {
+
+        for (WebElement producto : obtenerProductos()) {
+
+            if (!esProductoValido(producto)) {
+                continue;
+            }
+
+            List<WebElement> precios =
+                    producto.findElements(
+                            By.xpath(XPATH_PRECIO_VISIBLE));
+
+            if (precios.isEmpty()) {
+
+                System.out.println(
+                        "Producto sin precio visible");
+
+                return false;
             }
         }
 
@@ -324,7 +476,11 @@ public class SodimacPage extends BaseController {
 
     public boolean validarTarjetasVisibles() {
 
-        for (WebElement producto : tarjetasProductos) {
+        for (WebElement producto : obtenerProductos()) {
+
+            if (!esProductoValido(producto)) {
+                continue;
+            }
 
             Rectangle rect =
                     producto.getRect();

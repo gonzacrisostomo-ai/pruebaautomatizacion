@@ -1,7 +1,7 @@
 package StepDefinition;
 
 import ObjectPage.SodimacPage;
-import io.cucumber.datatable.DataTable;
+import io.cucumber.java.en.And;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import org.junit.Assert;
@@ -19,22 +19,32 @@ public class SodimacDefinition {
 
     @Then("debe visualizar el encabezado principal")
     public void debeVisualizarElEncabezadoPrincipal() {
-        Assert.assertTrue(sodimacPage.visualizarEncabezadoPrincipal());
+        Assert.assertTrue(
+                "No se visualiza el encabezado principal",
+                sodimacPage.visualizarEncabezadoPrincipal()
+        );
+
     }
 
     @Then("debe visualizar el título de la categoría")
     public void debeVisualizarElTituloCategoria() {
-        Assert.assertTrue(sodimacPage.visualizarTituloCategoria());
+        Assert.assertTrue(
+                "No se visualiza el título de la categoría",
+                sodimacPage.visualizarTituloCategoria()
+        );
     }
 
     @Then("debe visualizar el contenedor de productos")
     public void debeVisualizarElContenedorProductos() {
-        Assert.assertTrue(sodimacPage.visualizarContenedorProductos());
+        Assert.assertTrue(
+                "No se visualiza el contenedor de productos",
+                sodimacPage.visualizarContenedorProductos()
+        );
+
     }
 
-    @Then("cada tarjeta de producto visible debe mostrar")
-    public void cadaTarjetaDeProductoVisibleDebeMostrar(
-            DataTable dataTable) {
+    @Then("cada tarjeta de producto visible debe mostrar sus elementos obligatorios")
+    public void validarTarjetas() {
 
         Assert.assertTrue(
                 "Las tarjetas no contienen todos los elementos requeridos",
@@ -42,29 +52,71 @@ public class SodimacDefinition {
         );
     }
 
+    @Then("los enlaces de los productos deben ser válidos")
+    public void validarLinksProductos() {
+
+        Assert.assertTrue(
+                "Existen productos sin enlace válido",
+                sodimacPage.validarLinksProductos()
+        );
+    }
+
     @Then("las imágenes deben mostrarse correctamente")
     public void lasImagenesDebenMostrarseCorrectamente() {
-        Assert.assertTrue(sodimacPage.validarImagenesCargadas());
+        Assert.assertTrue(
+                "Existen imágenes que no cargaron correctamente",
+                sodimacPage.validarImagenesCargadas()
+        );
     }
 
     @Then("los nombres no deben estar vacíos")
     public void losNombresNoDebenEstarVacios() {
-        Assert.assertTrue(sodimacPage.validarNombresNoVacios());
+        Assert.assertTrue(
+                "Existen productos con nombre vacío",
+                sodimacPage.validarNombresNoVacios()
+        );
     }
 
     @Then("los precios deben tener formato monetario CLP")
     public void losPreciosDebenTenerFormatoMonetarioCLP() {
-        Assert.assertTrue(sodimacPage.validarFormatoMonedaCLP());
+        Assert.assertTrue(
+                "Existen precios con formato inválido",
+                sodimacPage.validarFormatoMonedaCLP()
+        );
+    }
+
+    @Then("deben mostrarse productos del catálogo")
+    public void debenMostrarseProductosDelCatalogo() {
+
+        Assert.assertTrue(
+                "No se encontraron suficientes productos",
+                sodimacPage.validarCantidadMinimaProductos()
+        );
+    }
+
+    @And("deben cargarse más de {int} productos")
+    public void validarCantidad(int minimo) {
+
+        Assert.assertTrue(
+                "La cantidad de productos es menor a " + minimo,
+                sodimacPage.obtenerCantidadProductos() >= minimo
+        );
     }
 
     @Then("ningún elemento debe superponerse")
     public void ningunElementoDebeSuperponerse() {
-        Assert.assertTrue(sodimacPage.validarTarjetasVisibles());
+        Assert.assertTrue(
+                "Se detectaron tarjetas superpuestas o invisibles",
+                sodimacPage.validarTarjetasVisibles()
+        );
     }
 
     @Then("no deben existir tarjetas visualmente duplicadas")
     public void noDebenExistirTarjetasDuplicadas() {
-        Assert.assertTrue(sodimacPage.validarSinDuplicados());
+        Assert.assertTrue(
+                "Se detectaron productos duplicados",
+                sodimacPage.validarSinDuplicados()
+        );
     }
 
     @Then("validar locators principales")
@@ -84,4 +136,3 @@ public class SodimacDefinition {
 
     }
 }
-//
