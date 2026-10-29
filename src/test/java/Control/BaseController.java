@@ -1,19 +1,18 @@
 package Control;
 
+import Constant.Constant;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.PageFactory;
 import org.openqa.selenium.support.pagefactory.AjaxElementLocatorFactory;
-import org.openqa.selenium.support.ui.ExpectedCondition;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import Constant.Constant;
 
 import java.time.Duration;
 
 public class BaseController {
-    private WebDriver driver;
-    private WebDriverWait wait;
+    protected WebDriver driver;
+    protected WebDriverWait wait;
 
     public BaseController() {
         this.driver = DriverContext.getDriver();
@@ -31,8 +30,12 @@ public class BaseController {
             wait2.until(ExpectedConditions.visibilityOf(elementoWeb));
             System.out.println("Es visible el elemento web " + elementoWeb.getText());
             return true;
-        } catch (Exception var3) {
-            System.out.println("No es visible el elemento web" + elementoWeb);
+        } catch (Exception e) {
+
+            System.out.println(
+                    "Error visualizando elemento: "
+                            + e.getMessage());
+
             return false;
         }
     }
