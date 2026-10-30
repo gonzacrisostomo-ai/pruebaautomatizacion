@@ -7,9 +7,7 @@ import org.openqa.selenium.Rectangle;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.FindBy;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Pattern;
 
 
@@ -377,11 +375,20 @@ public class SodimacPage extends BaseController {
     }
 
     // VALIDAR DUPLICADOS
-
     public boolean validarSinDuplicados() {
+
+        Map<String, List<String>> evidenciaDuplicados =
+                new HashMap<>();
 
         Set<String> productosUnicos =
                 new HashSet<>();
+
+        Set<String> duplicados =
+                new LinkedHashSet<>();
+
+        int productosRevisados = 0;
+        int productosPatrocinados = 0;
+        int productosInvalidos = 0;
 
         for (WebElement producto : obtenerProductos()) {
 
@@ -391,12 +398,16 @@ public class SodimacPage extends BaseController {
                         producto.getText();
 
                 if (contenido.contains("Patrocinado")) {
+                    productosPatrocinados++;
                     continue;
                 }
 
                 if (!esProductoValido(producto)) {
+                    productosInvalidos++;
                     continue;
                 }
+
+                productosRevisados++;
 
                 List<WebElement> nombres =
                         producto.findElements(
@@ -419,19 +430,31 @@ public class SodimacPage extends BaseController {
                 String url =
                         producto.getDomAttribute("href");
 
-                if (url == null) {
-                    url = "";
-                }
                 String llave =
-                        nombre + "|" + precio + "|" + url;
+                        (url != null && !url.isBlank())
+                                ? url
+                                : nombre + "|" + precio;
 
                 if (!productosUnicos.add(llave)) {
 
-                    System.out.println(
-                            "Duplicado encontrado: "
-                                    + llave);
+                    duplicados.add(llave);
 
-                    return false;
+                    evidenciaDuplicados
+                            .computeIfAbsent(
+                                    llave,
+                                    k -> new ArrayList<>())
+                            .add(url);
+
+                    System.out.println(
+                            "[DUPLICADO] " + llave);
+
+                } else {
+
+                    evidenciaDuplicados
+                            .computeIfAbsent(
+                                    llave,
+                                    k -> new ArrayList<>())
+                            .add(url);
                 }
 
             } catch (Exception e) {
@@ -439,40 +462,70 @@ public class SodimacPage extends BaseController {
                 System.out.println(
                         "Error validando duplicados: "
                                 + e.getMessage());
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    // validar productos con precio
-
-    public boolean validarProductosConPrecio() {
-
-        for (WebElement producto : obtenerProductos()) {
-
-            if (!esProductoValido(producto)) {
-                continue;
-            }
-
-            List<WebElement> precios =
-                    producto.findElements(
-                            By.xpath(XPATH_PRECIO_VISIBLE));
-
-            if (precios.isEmpty()) {
-
-                System.out.println(
-                        "Producto sin precio visible");
 
                 return false;
             }
         }
 
+        System.out.println(
+                "Productos encontrados: "
+                        + obtenerProductos().size());
+
+        System.out.println(
+                "Productos patrocinados: "
+                        + productosPatrocinados);
+
+        System.out.println(
+                "Productos inválidos: "
+                        + productosInvalidos);
+
+        System.out.println(
+                "Productos revisados: "
+                        + productosRevisados);
+
+        System.out.println(
+                "Productos únicos: "
+                        + productosUnicos.size());
+
+        System.out.println(
+                "Productos duplicados: "
+                        + duplicados.size());
+
+        if (!duplicados.isEmpty()) {
+
+            System.out.println(
+                    "\n========== DUPLICADOS DETECTADOS ==========");
+
+            for (Map.Entry<String, List<String>> item
+                    : evidenciaDuplicados.entrySet()) {
+
+                if (item.getValue().size() > 1) {
+
+                    System.out.println(
+                            "\nProducto: "
+                                    + item.getKey());
+
+                    System.out.println(
+                            "Cantidad apariciones: "
+                                    + item.getValue().size());
+
+                    System.out.println("URLs:");
+
+                    item.getValue()
+                            .forEach(System.out::println);
+                }
+            }
+
+            System.out.println(
+                    "\n===========================================");
+
+            return false;
+        }
+
         return true;
     }
 
-    // VALIDAR SUPERPOSICIÓN
+    // VALIDAR SUPERPOSICIÓN Y VISIBILIDAD
 
     public boolean validarTarjetasVisibles() {
 
@@ -482,8 +535,7 @@ public class SodimacPage extends BaseController {
                 continue;
             }
 
-            Rectangle rect =
-                    producto.getRect();
+            Rectangle rect = producto.getRect();
 
             if (rect.getWidth() <= 0) {
                 return false;
