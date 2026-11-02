@@ -20,3 +20,4 @@ Feature: Validación visual y funcional del catálogo Navidad
     And deben cargarse más de 20 productos
     And ningún elemento debe superponerse
     And no deben existir tarjetas visualmente duplicadas
+  //

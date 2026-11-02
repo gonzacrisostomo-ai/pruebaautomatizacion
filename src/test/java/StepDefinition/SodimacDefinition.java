@@ -94,6 +94,7 @@ public class SodimacDefinition {
         );
     }
 
+    //
     @And("deben cargarse más de {int} productos")
     public void validarCantidad(int minimo) {
 
